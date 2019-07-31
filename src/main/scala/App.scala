@@ -46,7 +46,7 @@ object App {
       .schema(customerSchema) // use the explicitly defined schema above to read in the CSV
       // .option("inferSchema", "true") --> Use this if you do NOT want to define schema explicitly and comment out .schema() above
       .load("dsefs:///northwind.csv") // the file path for our dataset within DSEFS.
-      .withColumnRenamed("customerId", "customer_id") // data model has properties in snake_case so we must rename any to match.
+      .withColumnRenamed("customerId", "customer_id")
       .withColumnRenamed("companyName", "company_name")
       .withColumnRenamed("contactName", "contact_name")
       .withColumnRenamed("postalCode", "postal_code")
@@ -60,9 +60,8 @@ object App {
       col("customer_id"),
       col("company_name"),
       col("contact_name"),
-      col("contact_title"),
+      col("contactTitle"),
       lit("customer") as "~label")
-
 
     val phoneVertex = northwindDF.select(
       col("number"),
@@ -71,7 +70,6 @@ object App {
     // Write the vertex dataframes to the graph
     println("\nWriting customer vertices to the graph...")
     g.updateVertices(customerVertex, Seq("customer"), cache = true)
-
 
     println("\nWriting phone vertices to the graph...")
     g.updateVertices(phoneVertex, Seq("contact_number"), cache = false)
