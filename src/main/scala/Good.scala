@@ -3,7 +3,7 @@ import org.apache.spark.sql.SparkSession
 
 
 
-object App {
+object Good {
   def main(args: Array[String]): Unit = {
 
     val spark = SparkSession
@@ -17,7 +17,8 @@ object App {
     import org.apache.spark.sql.functions._
     import org.apache.spark.sql.types._
 
-    val ignoreNulls = Map("spark.cassandra.output.ignoreNulls" -> "false")
+    //    val ignoreNulls = Map("spark.cassandra.output.ignoreNulls" -> "true") // Mistake 1: Always ignore null values
+    val ignoreNulls = Map("spark.cassandra.output.ignoreNulls" -> "true")
     spark.setCassandraConf(ignoreNulls)
 
     val graphName = "northwind"
@@ -49,6 +50,7 @@ object App {
       .withColumnRenamed("customerId", "customer_id") // data model has properties in snake_case so we must rename any to match.
       .withColumnRenamed("companyName", "company_name")
       .withColumnRenamed("contactName", "contact_name")
+      .withColumnRenamed("contactTitle", "contact_title")
       .withColumnRenamed("postalCode", "postal_code")
       .withColumnRenamed("phone", "number")
 
@@ -60,6 +62,7 @@ object App {
       col("customer_id"),
       col("company_name"),
       col("contact_name"),
+      //      col("contactTitle"), // Mistake 2: did not rename to correct property name
       col("contact_title"),
       lit("customer") as "~label")
 
@@ -70,7 +73,8 @@ object App {
 
     // Write the vertex dataframes to the graph
     println("\nWriting customer vertices to the graph...")
-    g.updateVertices(customerVertex, Seq("customer"), cache = true)
+    g.updateVertices(customerVertex, Seq("customer"), cache = false)
+    //    g.updateVertices(customerVertex, Seq("customer"), cache = true) // Mistake 3: Didn't follow best practice of set cache = false.
 
 
     println("\nWriting phone vertices to the graph...")
@@ -90,17 +94,30 @@ object App {
 
     // Now we can use the idColumn() function to get the ids in the proper edge format
     // the idColumn function takes the label and the keys to create the database id
+    //    val customerToPhoneEdge = customerToPhoneDF.select(
+    //      g.idColumn(
+    //        col("company_name"),
+    //        col("srcLabel"),
+    //        col("customer_id")   // Mistake 4: Didn't follow best practice of g.idColumn must be in the correct order.
+    //      ) as "src",
+    //      g.idColumn(
+    //        col("dstLabel"),
+    //        col("contact_number")
+    //      ) as "dst",
+    //      col("edgeLabel") as "~label")
+
     val customerToPhoneEdge = customerToPhoneDF.select(
       g.idColumn(
-        col("company_name"),
         col("srcLabel"),
-        col("customer_id")
+        col("customer_id"),
+        col("company_name")
       ) as "src",
       g.idColumn(
         col("dstLabel"),
-        col("contact_number")
+        col("number")
       ) as "dst",
       col("edgeLabel") as "~label")
+
 
     // Write the edge dataframe to the graph
     println("\nWriting customer to phone edges to the graph...")
